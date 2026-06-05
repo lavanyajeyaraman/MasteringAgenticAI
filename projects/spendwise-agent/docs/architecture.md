@@ -1,121 +1,139 @@
 # SpendWise Agent Architecture
 
-## High-Level Flow
+SpendWise Agent is a local Streamlit application that turns bank statement PDFs or CSV exports into a clean expense dashboard. The app first standardizes messy transaction data, then uses rules, analytics, and an optional LLM provider to generate insights and chatbot answers.
+
+## Simple End-to-End Flow
 
 ```mermaid
 flowchart LR
-    User[User] --> UI[Streamlit UI]
+    A[User uploads<br/>PDF or CSV] --> B[Extract<br/>transactions]
+    B --> C[Clean and<br/>standardize]
+    C --> D[Categorize<br/>expenses]
+    D --> E[Review and<br/>learn corrections]
+    E --> F[Dashboard<br/>and analytics]
+    F --> G[AI chat<br/>answers]
 
-    UI --> Import[Import & Review]
-    Import --> Upload[PDF / CSV Upload]
-    Upload --> Extract[PDF Text + Table Extraction]
-    Extract --> Cleanse[Cleanse Merchants<br/>Normalize Dates + Amounts]
-    Cleanse --> Rules[Category Rule Engine]
-
-    Rules --> BuiltIn[Built-in Rules]
-    Rules --> Learned[data/category_rules.csv<br/>Learned User Corrections]
-    BuiltIn --> Standardized[Standardized Transactions]
-    Learned --> Standardized
-
-    Standardized --> Review[Editable Review Table]
-    Review --> SaveRules[Save Category Rules]
-    SaveRules --> Learned
-
-    Review --> ActiveData[Session Transaction Data]
-    ActiveData --> Dashboard[Dashboard]
-    ActiveData --> Insights[Insights]
-    ActiveData --> Transactions[Transactions Table]
-    ActiveData --> ChatContext[AI Context Builder]
-
-    ChatContext --> LLM[LangChain Provider Registry]
-    LLM --> Groq[Groq]
-    LLM --> Gemini[Gemini]
-    LLM --> OpenAI[OpenAI]
-    LLM --> Ollama[Ollama Local Model]
-
-    Groq --> Chat[SpendWise Agent Chat]
-    Gemini --> Chat
-    OpenAI --> Chat
-    Ollama --> Chat
+    E -. saves rules .-> H[(data/category_rules.csv)]
+    H -. improves future uploads .-> D
 ```
 
-## Component View
+## Component Architecture
 
 ```mermaid
 flowchart TB
-    subgraph UI["Streamlit App"]
-        ImportTab[Import Tab]
-        DashboardTab[Dashboard Tab]
-        InsightsTab[Insights Tab]
-        TransactionsTab[Transactions Tab]
-        FloatingChat[Floating Chat]
+    subgraph UI["1. Streamlit UI Layer"]
+        UploadUI[Upload Statement]
+        ReviewUI[Review Categories]
+        DashboardUI[Dashboard]
+        InsightsUI[Insights]
+        TransactionsUI[Transactions]
+        ChatUI[Floating Chatbot]
     end
 
-    subgraph Ingestion["Ingestion Layer"]
-        PDFParser[pdfplumber Parser]
-        CSVParser[CSV Normalizer]
-        MerchantCleaner[Merchant Cleaner]
+    subgraph Ingestion["2. Ingestion + Cleaning Layer"]
+        PDFParser[PDF Parser<br/>pdfplumber]
+        CSVParser[CSV Normalizer<br/>pandas]
+        Cleaner[Merchant Cleaner]
+        Standardizer[Date / Amount / Source<br/>Standardizer]
+    end
+
+    subgraph Categorization["3. Categorization Layer"]
+        BuiltInRules[Built-in Category Rules]
+        LearnedRules[Learned User Rules]
         CategoryEngine[Category Engine]
     end
 
-    subgraph Memory["Learning Memory"]
-        RuleFile[data/category_rules.csv]
-        ReviewLoop[User Review Corrections]
+    subgraph Memory["4. Learning Memory"]
+        RuleFile[(data/category_rules.csv)]
+        SessionState[(Streamlit Session State)]
     end
 
-    subgraph Analytics["Analytics Layer"]
+    subgraph Analytics["5. Analytics Layer"]
         Metrics[Summary Metrics]
-        Charts[Category + Daily Charts]
+        Charts[Charts]
         Alerts[Overspending Alerts]
-        Subs[Subscription Detection]
-        Patterns[Pattern Observations]
+        Subscriptions[Subscription Detection]
+        Patterns[Spending Patterns]
     end
 
-    subgraph AI["AI Orchestration"]
-        Context[Financial Context Builder]
+    subgraph AI["6. AI Orchestration Layer"]
+        ContextBuilder[Financial Context Builder]
         LangChain[LangChain Registry]
         Providers[Groq / Gemini / OpenAI / Ollama]
     end
 
-    ImportTab --> PDFParser
-    ImportTab --> CSVParser
-    PDFParser --> MerchantCleaner
-    CSVParser --> MerchantCleaner
-    MerchantCleaner --> CategoryEngine
-    RuleFile --> CategoryEngine
-    CategoryEngine --> ImportTab
-    ImportTab --> ReviewLoop
-    ReviewLoop --> RuleFile
+    UploadUI --> PDFParser
+    UploadUI --> CSVParser
+    PDFParser --> Cleaner
+    CSVParser --> Cleaner
+    Cleaner --> Standardizer
+    Standardizer --> CategoryEngine
 
-    ImportTab --> Metrics
-    Metrics --> DashboardTab
-    Charts --> DashboardTab
-    Alerts --> InsightsTab
-    Subs --> InsightsTab
-    Patterns --> InsightsTab
-    ImportTab --> TransactionsTab
+    BuiltInRules --> CategoryEngine
+    RuleFile --> LearnedRules
+    LearnedRules --> CategoryEngine
+    CategoryEngine --> ReviewUI
+    ReviewUI --> RuleFile
+    ReviewUI --> SessionState
 
-    Metrics --> Context
-    Alerts --> Context
-    Subs --> Context
-    Patterns --> Context
-    Context --> LangChain
+    SessionState --> Metrics
+    SessionState --> Charts
+    SessionState --> Alerts
+    SessionState --> Subscriptions
+    SessionState --> Patterns
+
+    Metrics --> DashboardUI
+    Charts --> DashboardUI
+    Alerts --> InsightsUI
+    Subscriptions --> InsightsUI
+    Patterns --> InsightsUI
+    SessionState --> TransactionsUI
+
+    Metrics --> ContextBuilder
+    Alerts --> ContextBuilder
+    Subscriptions --> ContextBuilder
+    Patterns --> ContextBuilder
+    ContextBuilder --> LangChain
     LangChain --> Providers
-    Providers --> FloatingChat
+    Providers --> ChatUI
 ```
 
-## Demo Talk Track
+## Component Breakdown
 
-SpendWise Agent starts with a bank statement PDF or CSV. The import layer extracts transactions, cleans noisy merchant names, standardizes dates and amounts, and applies categorization rules.
+| Component | Purpose | Main Files |
+| --- | --- | --- |
+| Streamlit UI | Provides upload, review, dashboard, insights, transactions, and floating chatbot screens. | `app.py`, `src/styles.py` |
+| Ingestion Layer | Reads PDF and CSV statements, extracts raw transaction rows, and maps them into a common schema. | `src/ingestion.py` |
+| Cleaning Layer | Cleans merchant names and standardizes dates, amounts, categories, and source labels. | `src/ingestion.py` |
+| Categorization Engine | Applies built-in rules and learned user rules to assign expense categories. | `src/ingestion.py`, `data/category_rules.csv` |
+| Learning Memory | Stores user category corrections so future uploads become more accurate. | `data/category_rules.csv`, `st.session_state` |
+| Analytics Layer | Calculates spend totals, daily averages, category totals, subscriptions, alerts, and trends. | `src/analytics.py` |
+| AI Context Builder | Converts the current financial data into a compact summary for the chatbot. | `src/ai.py` |
+| LLM Orchestrator | Lets the app switch between Groq, Gemini, OpenAI, or Ollama without changing the UI logic. | `src/llm.py` |
+| Tests | Verifies ingestion, analytics, recurring charge detection, and AI context behavior. | `tests/` |
 
-The key design decision is the learning loop. When a user corrects categories in the review table, those corrections are saved to `data/category_rules.csv`. Future statements use those learned rules before falling back to built-in rules, so the agent improves over time.
+## Data Flow
 
-Once transactions are standardized, the same clean dataset powers the dashboard, insights, transaction table, and AI chat context. The chatbot is model-agnostic through LangChain and can run on Groq, Gemini, OpenAI, or a local Ollama model.
+1. The user uploads a bank statement as a PDF or CSV.
+2. The ingestion layer extracts transactions and converts them into the standard format: `date`, `merchant`, `category`, `amount`, and `source`.
+3. The categorization engine applies learned user rules first, then built-in fallback rules.
+4. The user can review and correct categories before using the dashboard.
+5. Corrected categories are saved to `data/category_rules.csv`.
+6. The clean transaction data powers charts, alerts, subscription detection, insights, and chatbot answers.
 
-## Why This Architecture Works
+## Demo Explanation
 
-- Real bank PDFs are inconsistent, so the app separates extraction from review.
-- The dashboard only uses standardized transactions.
-- User corrections become persistent rules.
-- LLM providers are swappable through one registry.
-- Local Ollama support avoids cloud API quota limits.
+SpendWise Agent is designed around one important idea: real bank statements are messy, so the app does not trust raw PDF data immediately. It first extracts, cleans, categorizes, and lets the user review the result.
+
+Once the data is standardized, the same clean transaction table powers every feature: dashboard metrics, spending charts, subscriptions, alerts, insights, and the floating AI chatbot.
+
+The app also learns from the user. When a user fixes a merchant category, that correction is saved as a rule. The next time a similar statement is uploaded, SpendWise Agent can categorize it more accurately.
+
+## Why This Design Works
+
+- Separates messy PDF extraction from clean dashboard calculations.
+- Gives the user a review step before analytics are trusted.
+- Learns from corrections instead of relying only on one-time AI guesses.
+- Keeps uploaded data local in the Streamlit session.
+- Makes LLM providers swappable through LangChain.
+- Supports local open-weight models through Ollama to reduce API cost.
