@@ -14,8 +14,7 @@ import pdfplumber
 CANONICAL_COLUMNS = ["date", "merchant", "category", "amount", "source"]
 TRANSACTION_COLUMNS = CANONICAL_COLUMNS + ["category_source"]
 RULE_COLUMNS = ["pattern", "merchant", "category"]
-RULES_PATH = Path("data/category_rules.csv")
-
+RULES_PATH = Path(__file__).resolve().parents[1] / "data" / "category_rules.csv"
 DATE_COLUMNS = {"date", "transaction date", "transaction_date", "posted date", "post date"}
 MERCHANT_COLUMNS = {"merchant", "description", "name", "vendor", "payee", "details"}
 CATEGORY_COLUMNS = {"category", "type", "group"}
