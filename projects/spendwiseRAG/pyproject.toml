@@ -1,0 +1,9 @@
+[project]
+name = "spendwise-rag"
+version = "0.1.0"
+description = "Personal-finance RAG application for statement ingestion, retrieval, chat, and analytics."
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

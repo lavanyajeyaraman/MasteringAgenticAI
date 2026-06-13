@@ -1,0 +1,12 @@
+services:
+  spendwise-rag:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    env_file:
+      - ../../.env
+    ports:
+      - "8501:8501"
+    volumes:
+      - ../../data:/app/data
+      - ../../logs:/app/logs

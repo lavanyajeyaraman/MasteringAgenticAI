@@ -1,0 +1,12 @@
+[app]
+name = "SpendWise RAG"
+environment = "local"
+log_level = "INFO"
+
+[ollama]
+model = "llama3.1:8b"
+base_url = "http://localhost:11434"
+
+[pinecone]
+index = "smartspend"
+clear_namespace_before_upsert = true
